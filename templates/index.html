@@ -897,6 +897,17 @@
                         <span class="log-timestamp">[SYSTEM]</span> Logs cleared successfully
                     </div>
                 `;
+                
+                // Clear all charts
+                vehicleChart.data.labels = [];
+                vehicleChart.data.datasets[0].data = [];
+                vehicleChart.update();
+                
+                congestionChart.data.datasets[0].data = [0, 0, 0];
+                congestionChart.update();
+                
+                fogDecisionChart.data.datasets[0].data = [0, 0];
+                fogDecisionChart.update();
             } catch (error) {
                 console.error('Error clearing logs:', error);
             }
