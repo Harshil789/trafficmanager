@@ -217,13 +217,26 @@ def get_logs():
 @app.route('/api/clear-logs', methods=['POST'])
 def clear_logs():
     """
-    Clear console logs
+    Clear console logs and database records
     """
     global console_logs
     console_logs = []
+    
+    try:
+        # Delete all traffic logs and fog stats from database
+        TrafficLog.query.delete()
+        FogStats.query.delete()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+    
     return jsonify({
         "status": "success",
-        "message": "Logs cleared"
+        "message": "Logs and data cleared"
     })
 
 
