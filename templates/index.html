@@ -318,10 +318,18 @@
 
         .charts-section {
             background: white;
-            padding: 20px;
+            padding: 25px;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             margin-bottom: 30px;
+            border-top: 4px solid #667eea;
+        }
+        
+        .charts-section h3 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .charts-grid {
@@ -332,10 +340,18 @@
         }
 
         .chart-container {
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+            padding: 18px;
+            border-radius: 12px;
             min-height: 200px;
+            border: 1px solid #e8ecf1;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .chart-container:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            border-color: #667eea;
         }
         
         .chart-container:last-child {
@@ -346,8 +362,57 @@
 
         .chart-container h4 {
             color: #333;
-            margin-bottom: 10px;
-            font-size: 14px;
+            margin-bottom: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .stat-card.stat-blue {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        }
+        
+        .stat-card.stat-orange {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+        }
+        
+        .stat-card.stat-green {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+        }
+        
+        .stat-card.stat-red {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 26px;
+            font-weight: 700;
         }
 
         @media (max-width: 768px) {
@@ -470,19 +535,35 @@
         </div>
 
         <div class="charts-section">
-            <h3 style="color: #667eea; margin-bottom: 5px; font-size: 18px;">📊 Real-Time Traffic Analytics</h3>
-            <p style="color: #666; margin-bottom: 15px; font-size: 13px;">Live visualization of traffic patterns and fog processing decisions</p>
+            <h3 style="margin-bottom: 3px; font-size: 22px; font-weight: 700;">📊 Real-Time Traffic Analytics</h3>
+            <p style="color: #888; margin-bottom: 20px; font-size: 13px;">Live visualization of traffic patterns and fog processing decisions</p>
+            
+            <div class="stats-row">
+                <div class="stat-card stat-blue">
+                    <div class="stat-label">Total Vehicles</div>
+                    <div class="stat-value" id="stat-vehicles">0</div>
+                </div>
+                <div class="stat-card stat-orange">
+                    <div class="stat-label">Avg Congestion</div>
+                    <div class="stat-value" id="stat-congestion">-</div>
+                </div>
+                <div class="stat-card stat-green">
+                    <div class="stat-label">Cloud Filtered</div>
+                    <div class="stat-value" id="stat-filtered">0</div>
+                </div>
+            </div>
+            
             <div class="charts-grid">
                 <div class="chart-container">
-                    <h4>Vehicle Count Over Time</h4>
+                    <h4><span class="material-icons" style="font-size: 18px;">trending_up</span>Vehicle Count Over Time</h4>
                     <canvas id="vehicleChart"></canvas>
                 </div>
                 <div class="chart-container">
-                    <h4>Congestion Level Distribution</h4>
+                    <h4><span class="material-icons" style="font-size: 18px;">pie_chart</span>Congestion Levels</h4>
                     <canvas id="congestionChart"></canvas>
                 </div>
                 <div class="chart-container">
-                    <h4>Fog Decision Analysis</h4>
+                    <h4><span class="material-icons" style="font-size: 18px;">analytics</span>Fog Processing Decisions</h4>
                     <canvas id="fogDecisionChart"></canvas>
                 </div>
             </div>
@@ -622,10 +703,25 @@
                     
                     fogDecisionChart.data.datasets[0].data = [localCount, cloudCount];
                     fogDecisionChart.update();
+                    
+                    updateStatsCards(data);
                 }
             } catch (error) {
                 console.error('Error updating charts:', error);
             }
+        }
+        
+        function updateStatsCards(data) {
+            const totalVehicles = data.vehicle_counts.reduce((a, b) => a + b, 0);
+            document.getElementById('stat-vehicles').textContent = totalVehicles;
+            
+            const congestionLevels = data.congestion_levels;
+            const avgCongestion = congestionLevels.length > 0 ? 
+                (congestionLevels.filter(l => l === 'High').length / congestionLevels.length * 100).toFixed(0) + '%' : '-';
+            document.getElementById('stat-congestion').textContent = avgCongestion;
+            
+            const filteredLocally = data.sent_to_cloud.filter(s => !s).length;
+            document.getElementById('stat-filtered').textContent = filteredLocally;
         }
 
         window.addEventListener('load', () => {
