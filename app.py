@@ -289,43 +289,44 @@ def edge_send_concurrent_data():
         
         def process_device(device):
             """Process single device in thread"""
-            try:
-                edge_data = device.generate_traffic_data()
-                
-                with lock:
-                    add_console_log(
-                        f"[CONCURRENT-EDGE] {device.device_id}: {edge_data['vehicle_count']} vehicles", 
-                        "info"
-                    )
-                
-                edge_to_fog_latency = random.randint(10, 30)
-                time.sleep(edge_to_fog_latency / 1000)
-                
-                fog_result = fog_node.process_edge_data(edge_data)
-                
-                cloud_response = None
-                fog_to_cloud_latency = 0
-                
-                if fog_result['send_to_cloud']:
-                    fog_to_cloud_latency = random.randint(50, 100)
-                    time.sleep(fog_to_cloud_latency / 1000)
-                    cloud_response = cloud_server.store_data(fog_result['data'])
-                
-                with lock:
-                    results.append({
-                        "device_id": device.device_id,
-                        "edge_data": edge_data,
-                        "fog_result": fog_result,
-                        "cloud_response": cloud_response,
-                        "latency": {
-                            "edge_to_fog_ms": edge_to_fog_latency,
-                            "fog_to_cloud_ms": fog_to_cloud_latency
-                        }
-                    })
+            with app.app_context():
+                try:
+                    edge_data = device.generate_traffic_data()
                     
-            except Exception as e:
-                with lock:
-                    add_console_log(f"[ERROR] Device {device.device_id}: {str(e)}", "error")
+                    with lock:
+                        add_console_log(
+                            f"[CONCURRENT-EDGE] {device.device_id}: {edge_data['vehicle_count']} vehicles", 
+                            "info"
+                        )
+                    
+                    edge_to_fog_latency = random.randint(10, 30)
+                    time.sleep(edge_to_fog_latency / 1000)
+                    
+                    fog_result = fog_node.process_edge_data(edge_data)
+                    
+                    cloud_response = None
+                    fog_to_cloud_latency = 0
+                    
+                    if fog_result['send_to_cloud']:
+                        fog_to_cloud_latency = random.randint(50, 100)
+                        time.sleep(fog_to_cloud_latency / 1000)
+                        cloud_response = cloud_server.store_data(fog_result['data'])
+                    
+                    with lock:
+                        results.append({
+                            "device_id": device.device_id,
+                            "edge_data": edge_data,
+                            "fog_result": fog_result,
+                            "cloud_response": cloud_response,
+                            "latency": {
+                                "edge_to_fog_ms": edge_to_fog_latency,
+                                "fog_to_cloud_ms": fog_to_cloud_latency
+                            }
+                        })
+                        
+                except Exception as e:
+                    with lock:
+                        add_console_log(f"[ERROR] Device {device.device_id}: {str(e)}", "error")
         
         selected_devices = random.sample(edge_devices, num_devices)
         
