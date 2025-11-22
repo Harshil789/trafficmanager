@@ -2,15 +2,30 @@ import os
 import random
 import time
 from flask import Flask, render_template, request, jsonify
+from werkzeug.middleware.proxy_fix import ProxyFix
+from models import db, TrafficLog, FogStats
 from cloud import CloudServer
 from fog import FogNode
 from edge_simulator import EdgeDevice, create_sample_devices
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET")
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-cloud_server = CloudServer()
-fog_node = FogNode("FOG_NODE_CENTRAL")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+    print("✓ Database tables created successfully")
+
+cloud_server = CloudServer(db)
+fog_node = FogNode("FOG_NODE_CENTRAL", db)
 edge_devices = create_sample_devices()
 
 console_logs = []
@@ -209,6 +224,49 @@ def clear_logs():
         "status": "success",
         "message": "Logs cleared"
     })
+
+
+@app.route('/api/chart-data', methods=['GET'])
+def get_chart_data():
+    """
+    Get data for charts and visualization
+    Returns recent traffic logs for visualization
+    """
+    try:
+        recent_logs = TrafficLog.query.order_by(TrafficLog.timestamp.desc()).limit(20).all()
+        recent_logs.reverse()
+        
+        chart_data = {
+            "labels": [log.timestamp.strftime("%H:%M:%S") for log in recent_logs],
+            "vehicle_counts": [log.vehicle_count for log in recent_logs],
+            "locations": [log.location for log in recent_logs],
+            "congestion_levels": [log.congestion_level for log in recent_logs],
+            "sent_to_cloud": [log.sent_to_cloud for log in recent_logs]
+        }
+        
+        return jsonify({
+            "status": "success",
+            "data": chart_data
+        })
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/all-logs', methods=['GET'])
+def get_all_logs():
+    """
+    Get all traffic logs from database
+    """
+    try:
+        logs = TrafficLog.query.order_by(TrafficLog.timestamp.desc()).limit(100).all()
+        return jsonify({
+            "status": "success",
+            "logs": [log.to_dict() for log in logs]
+        })
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 if __name__ == '__main__':

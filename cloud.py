@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from models import TrafficLog
 
 
 class CloudServer:
@@ -8,17 +9,16 @@ class CloudServer:
     Represents the Cloud layer in Fog Computing architecture.
     Responsible for:
     - Final heavy analytics
-    - Long-term data storage
+    - Long-term data storage (using PostgreSQL database)
     - Processing aggregated data from Fog nodes
     """
     
-    def __init__(self):
-        self.storage = []
-        self.analytics_results = []
+    def __init__(self, db):
+        self.db = db
         
     def store_data(self, data):
         """
-        Store traffic data sent from Fog layer
+        Store traffic data sent from Fog layer in database
         
         Args:
             data (dict): Traffic data containing vehicle count, congestion level, etc.
@@ -26,25 +26,30 @@ class CloudServer:
         Returns:
             dict: Response with storage confirmation and analytics
         """
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        stored_record = {
-            "timestamp": timestamp,
-            "data": data,
-            "source": "fog_layer"
-        }
-        
-        self.storage.append(stored_record)
-        
         analytics = self.perform_analytics(data)
         
-        self.analytics_results.append({
-            "timestamp": timestamp,
-            "analytics": analytics
-        })
+        traffic_log = TrafficLog(
+            device_id=data.get('device_id', 'Unknown'),
+            location=data.get('location', 'Unknown'),
+            vehicle_count=data.get('vehicle_count', 0),
+            average_speed_kmh=data.get('average_speed_kmh'),
+            congestion_level=data.get('congestion_level', 'Low'),
+            processed_by_fog=data.get('processed_by', 'Unknown'),
+            fog_latency_ms=data.get('fog_latency_ms', 0),
+            sent_to_cloud=True,
+            cloud_action=analytics['action_required'],
+            cloud_recommendation=analytics['recommendation']
+        )
+        
+        self.db.session.add(traffic_log)
+        self.db.session.commit()
+        
+        timestamp = traffic_log.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        
+        total_records = TrafficLog.query.filter_by(sent_to_cloud=True).count()
         
         print(f"\n{'='*60}")
-        print(f"[CLOUD LAYER] Data Stored at {timestamp}")
+        print(f"[CLOUD LAYER] Data Stored in Database at {timestamp}")
         print(f"{'='*60}")
         print(f"Vehicle Count: {data.get('vehicle_count', 'N/A')}")
         print(f"Congestion Level: {data.get('congestion_level', 'N/A')}")
@@ -53,13 +58,13 @@ class CloudServer:
         print(f"\n[CLOUD ANALYTICS] Final Decision:")
         print(f"  - Action Required: {analytics['action_required']}")
         print(f"  - Recommendation: {analytics['recommendation']}")
-        print(f"  - Total Records in Cloud: {len(self.storage)}")
+        print(f"  - Total Records in Cloud DB: {total_records}")
         print(f"{'='*60}\n")
         
         return {
             "status": "success",
-            "message": "Data stored in cloud successfully",
-            "record_id": len(self.storage),
+            "message": "Data stored in cloud database successfully",
+            "record_id": traffic_log.id,
             "analytics": analytics
         }
     
@@ -87,8 +92,12 @@ class CloudServer:
             action = "NO_ACTION"
             recommendation = "Traffic flow is normal, continue monitoring"
         
-        average_count = sum(record['data'].get('vehicle_count', 0) 
-                          for record in self.storage[-10:]) / max(len(self.storage[-10:]), 1)
+        recent_logs = TrafficLog.query.order_by(TrafficLog.timestamp.desc()).limit(10).all()
+        
+        if recent_logs:
+            average_count = sum(log.vehicle_count for log in recent_logs) / len(recent_logs)
+        else:
+            average_count = vehicle_count
         
         return {
             "action_required": action,
@@ -99,12 +108,13 @@ class CloudServer:
     
     def get_all_records(self):
         """
-        Retrieve all stored records
+        Retrieve all stored records from database
         
         Returns:
             list: All stored traffic records
         """
-        return self.storage
+        logs = TrafficLog.query.order_by(TrafficLog.timestamp.desc()).all()
+        return [log.to_dict() for log in logs]
     
     def get_analytics_summary(self):
         """
@@ -113,8 +123,15 @@ class CloudServer:
         Returns:
             dict: Summary of cloud analytics
         """
+        total_records = TrafficLog.query.filter_by(sent_to_cloud=True).count()
+        total_all_logs = TrafficLog.query.count()
+        latest_log = TrafficLog.query.order_by(TrafficLog.timestamp.desc()).first()
+        
         return {
-            "total_records": len(self.storage),
-            "total_analytics": len(self.analytics_results),
-            "latest_analytics": self.analytics_results[-1] if self.analytics_results else None
+            "total_records": total_records,
+            "total_all_logs": total_all_logs,
+            "latest_analytics": {
+                "action": latest_log.cloud_action,
+                "timestamp": latest_log.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            } if latest_log else None
         }

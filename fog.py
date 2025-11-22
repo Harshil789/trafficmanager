@@ -2,6 +2,7 @@ import json
 import time
 import random
 from datetime import datetime
+from models import TrafficLog, FogStats
 
 
 class FogNode:
@@ -13,18 +14,32 @@ class FogNode:
     - Quick decision making
     - Filtering data before sending to cloud
     - Reducing latency by processing at the edge of network
+    - Persisting fog statistics in database
     """
     
-    def __init__(self, node_id="FOG_NODE_01"):
+    def __init__(self, node_id="FOG_NODE_01", db=None):
         self.node_id = node_id
-        self.processed_count = 0
-        self.forwarded_to_cloud = 0
-        self.filtered_count = 0
+        self.db = db
+        self._stats_initialized = False
+    
+    def _ensure_stats_initialized(self):
+        """
+        Ensure fog stats record exists in database
+        Called lazily when needed within app context
+        """
+        if self.db and not self._stats_initialized:
+            fog_stats = FogStats.query.filter_by(node_id=self.node_id).first()
+            if not fog_stats:
+                fog_stats = FogStats(node_id=self.node_id)
+                self.db.session.add(fog_stats)
+                self.db.session.commit()
+            self._stats_initialized = True
         
     def process_edge_data(self, edge_data):
         """
         Process data received from Edge devices
         Makes quick decisions about whether to forward to cloud
+        Stores all data in database
         
         Args:
             edge_data (dict): Data from edge device
@@ -32,9 +47,9 @@ class FogNode:
         Returns:
             dict: Processing result with decision
         """
-        start_time = time.time()
+        self._ensure_stats_initialized()
         
-        self.processed_count += 1
+        start_time = time.time()
         
         vehicle_count = edge_data.get('vehicle_count', 0)
         location = edge_data.get('location', 'Unknown')
@@ -56,8 +71,34 @@ class FogNode:
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "processed_by": self.node_id,
             "fog_processing_time_ms": round(processing_time, 2),
-            "fog_latency_ms": fog_latency
+            "fog_latency_ms": fog_latency,
+            "average_speed_kmh": edge_data.get('average_speed_kmh')
         }
+        
+        if self.db:
+            traffic_log = TrafficLog(
+                device_id=device_id,
+                location=location,
+                vehicle_count=vehicle_count,
+                average_speed_kmh=edge_data.get('average_speed_kmh'),
+                congestion_level=congestion_level,
+                processed_by_fog=self.node_id,
+                fog_latency_ms=fog_latency,
+                sent_to_cloud=send_to_cloud
+            )
+            self.db.session.add(traffic_log)
+            
+            fog_stats = FogStats.query.filter_by(node_id=self.node_id).first()
+            if fog_stats:
+                fog_stats.total_processed += 1
+                if send_to_cloud:
+                    fog_stats.forwarded_to_cloud += 1
+                else:
+                    fog_stats.filtered_locally += 1
+            
+            self.db.session.commit()
+        
+        fog_stats_dict = self.get_stats()
         
         print(f"\n{'*'*60}")
         print(f"[FOG LAYER] Processing Data from {device_id}")
@@ -69,13 +110,11 @@ class FogNode:
         print(f"Edge → Fog Latency: {fog_latency} ms")
         
         if send_to_cloud:
-            self.forwarded_to_cloud += 1
             print(f"[FOG DECISION] ⚠️  ALERT! Forwarding to CLOUD (High Traffic Detected)")
         else:
-            self.filtered_count += 1
             print(f"[FOG DECISION] ✓ Normal Traffic - Handled Locally (No Cloud Needed)")
         
-        print(f"Fog Stats - Processed: {self.processed_count} | To Cloud: {self.forwarded_to_cloud} | Filtered: {self.filtered_count}")
+        print(f"Fog Stats - Processed: {fog_stats_dict['total_processed']} | To Cloud: {fog_stats_dict['forwarded_to_cloud']} | Filtered: {fog_stats_dict['filtered_locally']}")
         print(f"{'*'*60}\n")
         
         return {
@@ -126,17 +165,20 @@ class FogNode:
     
     def get_stats(self):
         """
-        Get statistics of fog node processing
+        Get statistics of fog node processing from database
         
         Returns:
             dict: Fog node statistics
         """
+        if self.db:
+            fog_stats = FogStats.query.filter_by(node_id=self.node_id).first()
+            if fog_stats:
+                return fog_stats.to_dict()
+        
         return {
             "node_id": self.node_id,
-            "total_processed": self.processed_count,
-            "forwarded_to_cloud": self.forwarded_to_cloud,
-            "filtered_locally": self.filtered_count,
-            "cloud_reduction_percentage": round(
-                (self.filtered_count / max(self.processed_count, 1)) * 100, 2
-            )
+            "total_processed": 0,
+            "forwarded_to_cloud": 0,
+            "filtered_locally": 0,
+            "cloud_reduction_percentage": 0
         }
