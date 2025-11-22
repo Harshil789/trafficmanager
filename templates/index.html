@@ -620,12 +620,37 @@
                         legend: {
                             display: true,
                             position: 'top'
+                        },
+                        filler: {
+                            propagate: true
                         }
                     },
                     scales: {
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                font: {
+                                    size: 10
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
                         y: {
                             beginAtZero: true,
-                            max: 120
+                            max: 120,
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            bottom: 20
                         }
                     }
                 }
