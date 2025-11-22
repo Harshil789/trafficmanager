@@ -343,10 +343,11 @@
             background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
             padding: 12px;
             border-radius: 12px;
-            min-height: 150px;
+            height: 150px;
             border: 1px solid #e8ecf1;
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
             transition: all 0.3s ease;
+            overflow: hidden;
         }
         
         .chart-container:hover {
@@ -686,9 +687,18 @@
                 
                 if (result.status === 'success' && result.data) {
                     const data = result.data;
+                    const maxDataPoints = 15;
                     
-                    vehicleChart.data.labels = data.labels;
-                    vehicleChart.data.datasets[0].data = data.vehicle_counts;
+                    let labels = data.labels;
+                    let vehicleData = data.vehicle_counts;
+                    
+                    if (labels.length > maxDataPoints) {
+                        labels = labels.slice(-maxDataPoints);
+                        vehicleData = vehicleData.slice(-maxDataPoints);
+                    }
+                    
+                    vehicleChart.data.labels = labels;
+                    vehicleChart.data.datasets[0].data = vehicleData;
                     vehicleChart.update();
                     
                     const lowCount = data.congestion_levels.filter(l => l === 'Low').length;
