@@ -316,6 +316,34 @@
             margin-bottom: 10px;
         }
 
+        .charts-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .chart-container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            min-height: 300px;
+        }
+
+        .chart-container h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
         @media (max-width: 768px) {
             .architecture-grid {
                 grid-template-columns: 1fr;
@@ -325,8 +353,13 @@
                 flex-direction: column;
                 gap: 15px;
             }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 </head>
 <body>
     <div class="container">
@@ -344,6 +377,10 @@
             <button class="btn-primary" onclick="sendTrafficData()">
                 <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">send</span>
                 Send Traffic Data
+            </button>
+            <button class="btn-primary" onclick="sendConcurrentData()" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">multiple_stop</span>
+                Send Concurrent (3 Devices)
             </button>
             <button class="btn-secondary" onclick="clearLogs()">Clear Logs</button>
             <div class="loading" id="loading">
@@ -422,6 +459,25 @@
             </div>
         </div>
 
+        <div class="charts-section">
+            <h3 style="color: #667eea; margin-bottom: 10px;">📊 Real-Time Traffic Analytics</h3>
+            <p style="color: #666; margin-bottom: 20px;">Live visualization of traffic patterns and fog processing decisions</p>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h4>Vehicle Count Over Time</h4>
+                    <canvas id="vehicleChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h4>Congestion Level Distribution</h4>
+                    <canvas id="congestionChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h4>Fog Decision Analysis</h4>
+                    <canvas id="fogDecisionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <div class="console-panel">
             <div class="console-header">
                 <h3>▶ SYSTEM CONSOLE LOGS</h3>
@@ -448,6 +504,125 @@
 
     <script>
         let logCount = 0;
+        let vehicleChart, congestionChart, fogDecisionChart;
+
+        function initCharts() {
+            const vehicleCtx = document.getElementById('vehicleChart').getContext('2d');
+            vehicleChart = new Chart(vehicleCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Vehicle Count',
+                        data: [],
+                        borderColor: '#2196F3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 120
+                        }
+                    }
+                }
+            });
+
+            const congestionCtx = document.getElementById('congestionChart').getContext('2d');
+            congestionChart = new Chart(congestionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Low', 'Medium', 'High'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#4CAF50', '#FF9800', '#f44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            const fogCtx = document.getElementById('fogDecisionChart').getContext('2d');
+            fogDecisionChart = new Chart(fogCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Handled Locally', 'Sent to Cloud'],
+                    datasets: [{
+                        label: 'Fog Decisions',
+                        data: [0, 0],
+                        backgroundColor: ['#4CAF50', '#FF9800']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        async function updateCharts() {
+            try {
+                const response = await fetch('/api/chart-data');
+                const result = await response.json();
+                
+                if (result.status === 'success' && result.data) {
+                    const data = result.data;
+                    
+                    vehicleChart.data.labels = data.labels;
+                    vehicleChart.data.datasets[0].data = data.vehicle_counts;
+                    vehicleChart.update();
+                    
+                    const lowCount = data.congestion_levels.filter(l => l === 'Low').length;
+                    const mediumCount = data.congestion_levels.filter(l => l === 'Medium').length;
+                    const highCount = data.congestion_levels.filter(l => l === 'High').length;
+                    
+                    congestionChart.data.datasets[0].data = [lowCount, mediumCount, highCount];
+                    congestionChart.update();
+                    
+                    const localCount = data.sent_to_cloud.filter(s => !s).length;
+                    const cloudCount = data.sent_to_cloud.filter(s => s).length;
+                    
+                    fogDecisionChart.data.datasets[0].data = [localCount, cloudCount];
+                    fogDecisionChart.update();
+                }
+            } catch (error) {
+                console.error('Error updating charts:', error);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            initCharts();
+            updateCharts();
+            setInterval(updateCharts, 3000);
+        });
 
         async function sendTrafficData() {
             const loadingEl = document.getElementById('loading');
@@ -466,10 +641,42 @@
                 if (result.status === 'success') {
                     updateUI(result);
                     await fetchLogs();
+                    await updateCharts();
                 }
             } catch (error) {
                 console.error('Error:', error);
                 addLogToUI('ERROR', 'Failed to send data: ' + error.message, 'error');
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        async function sendConcurrentData() {
+            const loadingEl = document.getElementById('loading');
+            loadingEl.style.display = 'block';
+
+            try {
+                const response = await fetch('/edge/send-concurrent-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ num_devices: 3 })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    await fetchLogs();
+                    await updateCharts();
+                    
+                    const stats = await fetch('/api/stats').then(r => r.json());
+                    if (stats.fog) {
+                        document.getElementById('fog-filtered').textContent = stats.fog.filtered_locally;
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
             } finally {
                 loadingEl.style.display = 'none';
             }
