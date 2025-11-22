@@ -1,6 +1,7 @@
 import json
 import time
 import random
+import numpy as np
 from datetime import datetime
 from models import TrafficLog, FogStats
 
@@ -21,6 +22,7 @@ class FogNode:
         self.node_id = node_id
         self.db = db
         self._stats_initialized = False
+        self.history = []
     
     def _ensure_stats_initialized(self):
         """
@@ -57,6 +59,8 @@ class FogNode:
         
         congestion_level = self._calculate_congestion(vehicle_count)
         
+        predicted_congestion = self._predict_congestion(vehicle_count)
+        
         send_to_cloud = self._should_send_to_cloud(congestion_level, vehicle_count)
         
         processing_time = (time.time() - start_time) * 1000
@@ -68,6 +72,7 @@ class FogNode:
             "location": location,
             "vehicle_count": vehicle_count,
             "congestion_level": congestion_level,
+            "predicted_congestion": predicted_congestion,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "processed_by": self.node_id,
             "fog_processing_time_ms": round(processing_time, 2),
@@ -106,6 +111,7 @@ class FogNode:
         print(f"Location: {location}")
         print(f"Vehicle Count: {vehicle_count}")
         print(f"Calculated Congestion: {congestion_level}")
+        print(f"ML Predicted Next: {predicted_congestion}")
         print(f"Fog Processing Time: {round(processing_time, 2)} ms")
         print(f"Edge → Fog Latency: {fog_latency} ms")
         
@@ -162,6 +168,39 @@ class FogNode:
             return True
         
         return False
+    
+    def _predict_congestion(self, vehicle_count):
+        """
+        ML-based congestion prediction using simple regression
+        Uses historical traffic patterns to predict next congestion level
+        
+        Args:
+            vehicle_count (int): Current vehicle count
+            
+        Returns:
+            str: Predicted congestion level
+        """
+        self.history.append(vehicle_count)
+        
+        if len(self.history) > 20:
+            self.history = self.history[-20:]
+        
+        if len(self.history) < 3:
+            return self._calculate_congestion(vehicle_count)
+        
+        try:
+            recent_data = np.array(self.history[-5:])
+            
+            avg_trend = np.mean(np.diff(recent_data))
+            
+            predicted_count = vehicle_count + avg_trend
+            
+            predicted_count = max(0, min(predicted_count, 120))
+            
+            return self._calculate_congestion(int(predicted_count))
+            
+        except Exception:
+            return self._calculate_congestion(vehicle_count)
     
     def get_stats(self):
         """
