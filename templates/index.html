@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Traffic Monitor - Fog + Edge Computing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header .material-icons {
+            font-size: 36px;
+            color: #667eea;
+        }
+
+        .status-badge {
+            background: #4caf50;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .control-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 500;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            margin: 0 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: #ff5722;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #e64a19;
+        }
+
+        .architecture-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .layer-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            min-height: 350px;
+            transition: transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .layer-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .layer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+        }
+
+        .layer-card.edge::before {
+            background: #2196F3;
+        }
+
+        .layer-card.fog::before {
+            background: #FF9800;
+        }
+
+        .layer-card.cloud::before {
+            background: #4CAF50;
+        }
+
+        .layer-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .layer-header .material-icons {
+            font-size: 32px;
+        }
+
+        .layer-card.edge .material-icons {
+            color: #2196F3;
+        }
+
+        .layer-card.fog .material-icons {
+            color: #FF9800;
+        }
+
+        .layer-card.cloud .material-icons {
+            color: #4CAF50;
+        }
+
+        .layer-header h2 {
+            font-size: 22px;
+            color: #333;
+        }
+
+        .metric {
+            margin: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .congestion-badge {
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .congestion-low {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .congestion-medium {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .congestion-high {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .console-panel {
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+        }
+
+        .console-header h3 {
+            color: #4caf50;
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .log-entry {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 4px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .log-info {
+            color: #2196F3;
+        }
+
+        .log-success {
+            color: #4CAF50;
+        }
+
+        .log-warning {
+            color: #FF9800;
+        }
+
+        .log-error {
+            color: #f44336;
+        }
+
+        .log-timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-top: 30px;
+        }
+
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .info-section p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .architecture-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span class="material-icons">traffic</span>
+                Smart Traffic Monitoring System
+            </h1>
+            <div class="status-badge">System Active</div>
+        </div>
+
+        <div class="control-panel">
+            <h2 style="margin-bottom: 15px; color: #333;">Control Panel</h2>
+            <p style="color: #666; margin-bottom: 20px;">Simulate edge device sending traffic data through Fog to Cloud</p>
+            <button class="btn-primary" onclick="sendTrafficData()">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">send</span>
+                Send Traffic Data
+            </button>
+            <button class="btn-secondary" onclick="clearLogs()">Clear Logs</button>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px; color: #666;">Processing...</p>
+            </div>
+        </div>
+
+        <div class="architecture-grid">
+            <div class="layer-card edge">
+                <div class="layer-header">
+                    <span class="material-icons">camera_outdoor</span>
+                    <h2>Edge Layer</h2>
+                </div>
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">IoT Sensors & Cameras</p>
+                <div class="metric">
+                    <span class="metric-label">Device ID:</span>
+                    <span class="metric-value" id="edge-device">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Location:</span>
+                    <span class="metric-value" id="edge-location" style="font-size: 14px;">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Vehicle Count:</span>
+                    <span class="metric-value" id="edge-count">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Latency:</span>
+                    <span class="metric-value" id="edge-latency" style="font-size: 16px; color: #2196F3;">- ms</span>
+                </div>
+            </div>
+
+            <div class="layer-card fog">
+                <div class="layer-header">
+                    <span class="material-icons">router</span>
+                    <h2>Fog Layer</h2>
+                </div>
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">Intermediate Processing</p>
+                <div class="metric">
+                    <span class="metric-label">Congestion:</span>
+                    <span class="congestion-badge congestion-low" id="fog-congestion">Low</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Decision:</span>
+                    <span class="metric-value" id="fog-decision" style="font-size: 14px;">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Filtered:</span>
+                    <span class="metric-value" id="fog-filtered">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Latency:</span>
+                    <span class="metric-value" id="fog-latency" style="font-size: 16px; color: #FF9800;">- ms</span>
+                </div>
+            </div>
+
+            <div class="layer-card cloud">
+                <div class="layer-header">
+                    <span class="material-icons">cloud</span>
+                    <h2>Cloud Layer</h2>
+                </div>
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">Heavy Analytics & Storage</p>
+                <div class="metric">
+                    <span class="metric-label">Action:</span>
+                    <span class="metric-value" id="cloud-action" style="font-size: 14px;">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Records:</span>
+                    <span class="metric-value" id="cloud-records">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Status:</span>
+                    <span class="metric-value" id="cloud-status" style="font-size: 14px;">Ready</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="console-panel">
+            <div class="console-header">
+                <h3>▶ SYSTEM CONSOLE LOGS</h3>
+                <span style="color: #888; font-size: 12px;">Real-time Data Flow</span>
+            </div>
+            <div id="console-logs">
+                <div class="log-entry log-success">
+                    <span class="log-timestamp">[SYSTEM]</span> Smart Traffic Monitoring System Ready...
+                </div>
+                <div class="log-entry log-info">
+                    <span class="log-timestamp">[INFO]</span> Click "Send Traffic Data" to simulate Edge → Fog → Cloud flow
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>💡 About Fog + Edge Computing</h3>
+            <p><strong>Edge Computing:</strong> Processing data at the source (sensors/cameras) for ultra-low latency responses.</p>
+            <p><strong>Fog Computing:</strong> Intermediate layer between Edge and Cloud that processes data closer to the source, reducing latency and cloud load.</p>
+            <p><strong>Why Fog Reduces Latency:</strong> By filtering and processing data locally, only critical information goes to the cloud, reducing network delays and bandwidth usage.</p>
+            <p><strong>This Project:</strong> Simulates a traffic monitoring system where edge devices detect vehicles, fog nodes make quick decisions, and cloud handles heavy analytics only when needed.</p>
+        </div>
+    </div>
+
+    <script>
+        let logCount = 0;
+
+        async function sendTrafficData() {
+            const loadingEl = document.getElementById('loading');
+            loadingEl.style.display = 'block';
+
+            try {
+                const response = await fetch('/edge/send-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    updateUI(result);
+                    await fetchLogs();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addLogToUI('ERROR', 'Failed to send data: ' + error.message, 'error');
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        function updateUI(result) {
+            document.getElementById('edge-device').textContent = result.edge_data.device_id;
+            document.getElementById('edge-location').textContent = result.edge_data.location;
+            document.getElementById('edge-count').textContent = result.edge_data.vehicle_count;
+            document.getElementById('edge-latency').textContent = result.latency.edge_to_fog_ms + ' ms';
+
+            const congestion = result.fog_result.data.congestion_level;
+            const congestionEl = document.getElementById('fog-congestion');
+            congestionEl.textContent = congestion;
+            congestionEl.className = 'congestion-badge congestion-' + congestion.toLowerCase();
+
+            document.getElementById('fog-decision').textContent = result.fog_result.fog_decision;
+            document.getElementById('fog-latency').textContent = result.latency.fog_to_cloud_ms + ' ms';
+
+            if (result.cloud_response) {
+                document.getElementById('cloud-action').textContent = result.cloud_response.analytics.action_required;
+                document.getElementById('cloud-records').textContent = result.cloud_response.record_id;
+                document.getElementById('cloud-status').textContent = 'Stored';
+            } else {
+                document.getElementById('cloud-status').textContent = 'Not Used';
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const result = await response.json();
+
+                const consoleEl = document.getElementById('console-logs');
+                consoleEl.innerHTML = '';
+
+                result.logs.forEach(log => {
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'log-entry log-' + log.type;
+                    logEntry.innerHTML = `<span class="log-timestamp">[${log.timestamp}]</span> ${log.message}`;
+                    consoleEl.appendChild(logEntry);
+                });
+
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+            }
+        }
+
+        async function clearLogs() {
+            try {
+                await fetch('/api/clear-logs', { method: 'POST' });
+                document.getElementById('console-logs').innerHTML = `
+                    <div class="log-entry log-success">
+                        <span class="log-timestamp">[SYSTEM]</span> Logs cleared successfully
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error clearing logs:', error);
+            }
+        }
+
+        setInterval(fetchLogs, 2000);
+    </script>
+</body>
+</html>
