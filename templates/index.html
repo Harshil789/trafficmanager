@@ -589,6 +589,10 @@
                 <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">picture_as_pdf</span>
                 Export to PDF
             </button>
+            <button class="btn-secondary" onclick="downloadProjectReport()" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">description</span>
+                Project Report (PDF)
+            </button>
             <div class="loading" id="loading">
                 <div class="spinner"></div>
                 <p style="margin-top: 10px; color: #666;">Processing...</p>
@@ -1251,6 +1255,10 @@
 
         function exportToPDF() {
             window.location.href = '/api/export-pdf';
+        }
+
+        function downloadProjectReport() {
+            window.location.href = '/api/project-report';
         }
 
         // Initialize locations on page load
