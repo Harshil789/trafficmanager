@@ -781,6 +781,101 @@ def generate_project_report():
         
         story.append(PageBreak())
         
+        story.append(Paragraph("EDGE COMPUTING: THEORY & APPLICATION", heading_style))
+        edge_theory = """
+        <b>What is Edge Computing?</b><br/>
+        Edge computing refers to processing data at the source (edge devices) rather than sending 
+        all data to a central cloud. In our system, edge devices (IoT sensors and cameras) are located 
+        directly at traffic monitoring points and generate raw vehicle count data in real-time.<br/>
+        <br/>
+        <b>Advantages in Smart Traffic:</b><br/>
+        • <b>Low Latency:</b> Immediate data capture without network delays<br/>
+        • <b>Real-time Response:</b> Quick reactions to traffic changes (5-120 vehicles per reading)<br/>
+        • <b>Reduced Bandwidth:</b> Raw data collected locally, not all sent to cloud<br/>
+        • <b>Scalability:</b> Multiple edge devices operate independently (5 devices simulated)<br/>
+        <br/>
+        <b>Our Implementation:</b><br/>
+        The edge layer simulates 5 traffic monitoring devices generating vehicle counts (5-120 vehicles), 
+        average speeds (20-80 km/h), and timestamps. Each device operates independently and sends data 
+        to the fog layer for intelligent processing.
+        """
+        story.append(Paragraph(edge_theory, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        story.append(Paragraph("FOG COMPUTING: THEORY & APPLICATION", heading_style))
+        fog_theory = """
+        <b>What is Fog Computing?</b><br/>
+        Fog computing is an intermediate layer between edge devices and cloud that performs quick, 
+        localized processing and intelligent decision-making. The fog node acts as a filter, processing 
+        edge data and deciding what needs cloud analysis.<br/>
+        <br/>
+        <b>Advantages in Smart Traffic:</b><br/>
+        • <b>Intelligent Filtering:</b> 60-70% cloud load reduction by filtering Low/Medium congestion locally<br/>
+        • <b>Quick Decisions:</b> 1-2ms processing per record enables real-time alerts<br/>
+        • <b>Cloud Optimization:</b> Only critical data (High congestion: 70+ vehicles) forwarded to cloud<br/>
+        • <b>Network Efficiency:</b> Reduces data transmission (50-100ms latency to cloud)<br/>
+        <br/>
+        <b>Our Implementation:</b><br/>
+        The fog node receives data from edge devices, classifies congestion level (Low &lt;30, Medium 30-69, 
+        High 70+), stores all data locally, and only forwards high-priority alerts to the cloud. This reduces 
+        cloud bandwidth by 60-70% while maintaining data integrity. Fog processing latency is simulated at 
+        10-30ms (realistic LAN communication).
+        """
+        story.append(Paragraph(fog_theory, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        story.append(PageBreak())
+        
+        story.append(Paragraph("CLOUD COMPUTING: THEORY & APPLICATION", heading_style))
+        cloud_theory = """
+        <b>What is Cloud Computing?</b><br/>
+        Cloud computing provides centralized, on-demand computing resources for heavy processing, long-term 
+        storage, and complex analytics. In our system, the cloud handles only critical traffic incidents 
+        and performs deep analytics on high-congestion events.<br/>
+        <br/>
+        <b>Advantages in Smart Traffic:</b><br/>
+        • <b>Advanced Analytics:</b> ML algorithms for traffic pattern prediction<br/>
+        • <b>Long-term Storage:</b> Historical data for trend analysis and reporting<br/>
+        • <b>Global Visibility:</b> Aggregate data from multiple fog nodes across the city<br/>
+        • <b>Reduced Costs:</b> Only processes 30-40% of data (high-priority alerts)<br/>
+        <br/>
+        <b>Our Implementation:</b><br/>
+        The cloud layer receives only high-priority traffic data (congestion &gt;70 vehicles) from the fog node. 
+        It performs heavy analytics, stores historical records, and generates recommendations. Cloud latency 
+        is simulated at 50-100ms (realistic WAN communication). The system demonstrates cloud reduction: 
+        instead of processing all traffic data, only critical incidents are sent to cloud, achieving 60-70% 
+        bandwidth savings.
+        """
+        story.append(Paragraph(cloud_theory, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+        
+        story.append(Paragraph("EDGE vs FOG vs CLOUD: COMPARISON", heading_style))
+        
+        comparison_data = [
+            ['Characteristic', 'Edge Layer', 'Fog Layer', 'Cloud Layer'],
+            ['Location', 'At data source', 'Network edge', 'Data center'],
+            ['Latency', '< 1ms', '10-30ms', '50-100ms'],
+            ['Data Processing', 'Raw collection', 'Filtering & decisions', 'Heavy analytics'],
+            ['Storage', 'Temporary', 'Local database', 'Long-term repository'],
+            ['Scalability', 'Limited', 'Moderate', 'Unlimited'],
+            ['Cost', 'Low compute', 'Moderate', 'Higher for volume'],
+            ['In Our System', 'Sensors generate data', 'Filters & forwards', 'Analytics & reports']
+        ]
+        
+        comp_table = Table(comparison_data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
+        comp_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1565C0')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#E3F2FD')]),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+        ]))
+        
+        story.append(comp_table)
+        story.append(Spacer(1, 0.2*inch))
+        
         story.append(Paragraph("CONGESTION CALCULATION", heading_style))
         calc_text = """
         <b>Proportional Congestion Formula:</b><br/>
@@ -798,52 +893,6 @@ def generate_project_report():
         """
         story.append(Paragraph(calc_text, styles['Normal']))
         story.append(Spacer(1, 0.15*inch))
-        
-        story.append(Paragraph("DEPLOYMENT & SETUP", heading_style))
-        deploy_text = """
-        <b>Local Development:</b><br/>
-        • Auto-generates .env file with SQLite fallback<br/>
-        • Zero-setup local deployment<br/>
-        • Access at http://localhost:5000<br/>
-        <br/>
-        <b>Production (Replit):</b><br/>
-        • PostgreSQL database via DATABASE_URL<br/>
-        • Gunicorn server (21.2.0)<br/>
-        • Connection pooling and pre-ping enabled<br/>
-        • Automatic HTTPS through proxy fix middleware
-        """
-        story.append(Paragraph(deploy_text, styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(Paragraph("PROJECT STATUS", heading_style))
-        status_data = [
-            ['Item', 'Status'],
-            ['Core Architecture', '✓ Complete'],
-            ['Edge Layer Simulation', '✓ Complete'],
-            ['Fog Processing & Filtering', '✓ Complete'],
-            ['Cloud Integration', '✓ Complete'],
-            ['Web Dashboard', '✓ Complete'],
-            ['Data Export (CSV/PDF)', '✓ Complete'],
-            ['Location Analysis', '✓ Complete'],
-            ['Database Persistence', '✓ Complete'],
-            ['API Documentation', '✓ Complete'],
-            ['Production Deployment', '✓ Ready']
-        ]
-        
-        status_table = Table(status_data, colWidths=[3*inch, 1.5*inch])
-        status_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D32F2F')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#FFEBEE')]),
-            ('GRID', (0, 0), (-1, -1), 1, colors.grey)
-        ]))
-        
-        story.append(status_table)
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(Paragraph("Fully Functional & Ready for Deployment ✓", styles['Heading2']))
         
         doc.build(story)
         output.seek(0)
