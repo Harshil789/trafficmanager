@@ -2,12 +2,20 @@ import os
 import random
 import time
 import threading
-from flask import Flask, render_template, request, jsonify
+import csv
+import io
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, send_file
 from werkzeug.middleware.proxy_fix import ProxyFix
 from models import db, TrafficLog, FogStats
 from cloud import CloudServer
 from fog import FogNode
 from edge_simulator import EdgeDevice, create_sample_devices
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.units import inch
 
 app = Flask(__name__)
 
