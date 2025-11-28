@@ -1246,23 +1246,11 @@
         }
 
         function exportToCSV() {
-            try {
-                window.location.href = '/api/export-csv';
-                addConsoleLog('CSV export started', 'success');
-            } catch (error) {
-                console.error('Error exporting to CSV:', error);
-                alert('Failed to export CSV');
-            }
+            window.location.href = '/api/export-csv';
         }
 
         function exportToPDF() {
-            try {
-                window.location.href = '/api/export-pdf';
-                addConsoleLog('PDF export started', 'success');
-            } catch (error) {
-                console.error('Error exporting to PDF:', error);
-                alert('Failed to export PDF');
-            }
+            window.location.href = '/api/export-pdf';
         }
 
         // Initialize locations on page load
