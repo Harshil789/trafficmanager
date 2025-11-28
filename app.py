@@ -344,13 +344,20 @@ def compare_locations():
                 congestion_levels = [log.congestion_level for log in logs]
                 
                 high_count = congestion_levels.count('High')
-                avg_congestion = (high_count / len(congestion_levels) * 100) if congestion_levels else 0
+                medium_count = congestion_levels.count('Medium')
+                low_count = congestion_levels.count('Low')
+                
+                # Congestion % = percentage of readings that are Medium or High (not Low)
+                elevated_traffic_count = medium_count + high_count
+                congestion_percentage = (elevated_traffic_count / len(congestion_levels) * 100) if congestion_levels else 0
                 
                 comparison_data[location] = {
                     "avg_vehicles": sum(vehicle_counts) / len(vehicle_counts) if vehicle_counts else 0,
                     "peak_vehicles": max(vehicle_counts) if vehicle_counts else 0,
-                    "congestion_percentage": avg_congestion,
-                    "total_high_alerts": high_count
+                    "congestion_percentage": congestion_percentage,
+                    "total_high_alerts": high_count,
+                    "low_count": low_count,
+                    "medium_count": medium_count
                 }
         
         return jsonify({
