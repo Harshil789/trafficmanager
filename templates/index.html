@@ -581,6 +581,14 @@
                 Send Concurrent (3 Devices)
             </button>
             <button class="btn-secondary" onclick="clearLogs()">Clear Logs</button>
+            <button class="btn-secondary" onclick="exportToCSV()" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">download</span>
+                Export to CSV
+            </button>
+            <button class="btn-secondary" onclick="exportToPDF()" style="background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">picture_as_pdf</span>
+                Export to PDF
+            </button>
             <div class="loading" id="loading">
                 <div class="spinner"></div>
                 <p style="margin-top: 10px; color: #666;">Processing...</p>

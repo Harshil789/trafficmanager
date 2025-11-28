@@ -506,6 +506,127 @@ def edge_send_concurrent_data():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route('/api/export-csv', methods=['GET'])
+def export_csv():
+    """
+    Export all traffic logs to CSV format
+    """
+    try:
+        logs = TrafficLog.query.order_by(TrafficLog.timestamp.asc()).all()
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Timestamp', 'Location', 'Vehicle Count', 'Congestion Level', 'Congestion %', 'Sent to Cloud'])
+        
+        for log in logs:
+            congestion_pct = (log.vehicle_count / 120.0) * 100
+            writer.writerow([
+                log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                log.location,
+                log.vehicle_count,
+                log.congestion_level,
+                f"{congestion_pct:.1f}",
+                "Yes" if log.sent_to_cloud else "No"
+            ])
+        
+        output.seek(0)
+        return send_file(
+            io.BytesIO(output.getvalue().encode('utf-8')),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'traffic_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        )
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/export-pdf', methods=['GET'])
+def export_pdf():
+    """
+    Export traffic data to PDF format with statistics
+    """
+    try:
+        logs = TrafficLog.query.order_by(TrafficLog.timestamp.asc()).all()
+        
+        output = io.BytesIO()
+        doc = SimpleDocTemplate(output, pagesize=letter, title="Traffic Monitoring Report")
+        story = []
+        styles = getSampleStyleSheet()
+        
+        story.append(Paragraph("Smart Traffic Monitoring System - Report", styles['Title']))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        if logs:
+            total_vehicles = sum(log.vehicle_count for log in logs)
+            avg_vehicles = total_vehicles / len(logs) if logs else 0
+            high_alerts = sum(1 for log in logs if log.congestion_level == 'High')
+            locations = set(log.location for log in logs)
+            
+            summary_data = [
+                ['Metric', 'Value'],
+                ['Total Records', str(len(logs))],
+                ['Total Vehicles Detected', str(total_vehicles)],
+                ['Average Vehicles per Reading', f"{avg_vehicles:.1f}"],
+                ['High Alert Count', str(high_alerts)],
+                ['Unique Locations', str(len(locations))]
+            ]
+            
+            summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            
+            story.append(Paragraph("Summary Statistics", styles['Heading2']))
+            story.append(summary_table)
+            story.append(Spacer(1, 0.3*inch))
+            
+            story.append(PageBreak())
+            story.append(Paragraph("Detailed Traffic Logs", styles['Heading2']))
+            story.append(Spacer(1, 0.2*inch))
+            
+            log_data = [['Timestamp', 'Location', 'Vehicles', 'Level', 'Congestion %', 'To Cloud']]
+            for log in logs[-50:]:
+                congestion_pct = (log.vehicle_count / 120.0) * 100
+                log_data.append([
+                    log.timestamp.strftime("%H:%M:%S"),
+                    log.location[:12],
+                    str(log.vehicle_count),
+                    log.congestion_level,
+                    f"{congestion_pct:.0f}%",
+                    "✓" if log.sent_to_cloud else "✗"
+                ])
+            
+            log_table = Table(log_data, colWidths=[1*inch, 1.2*inch, 0.8*inch, 0.8*inch, 1*inch, 0.7*inch])
+            log_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+            ]))
+            
+            story.append(log_table)
+        
+        doc.build(story)
+        output.seek(0)
+        return send_file(
+            output,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'traffic_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        )
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("\n" + "="*70)
     print("🚦 SMART TRAFFIC MONITORING SYSTEM - FOG + EDGE COMPUTING 🚦")
