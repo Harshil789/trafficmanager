@@ -10,10 +10,31 @@ from fog import FogNode
 from edge_simulator import EdgeDevice, create_sample_devices
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET")
+
+# Generate .env file if missing
+if not os.path.exists('.env'):
+    with open('.env', 'w') as f:
+        f.write('# Auto-generated on first run\n')
+        f.write('DATABASE_URL=sqlite:///traffic_monitoring.db\n')
+        f.write('SESSION_SECRET=dev_secret_key_change_in_production\n')
+    print("✓ Auto-generated .env file (using SQLite for local development)")
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+# Use SQLite for local development if DATABASE_URL not set or is None
+database_url = os.environ.get("DATABASE_URL")
+if not database_url or database_url == "None":
+    database_url = "sqlite:///traffic_monitoring.db"
+    print("✓ Using SQLite database for local development")
+else:
+    print(f"✓ Using configured database: {database_url.split('@')[0] if '@' in database_url else database_url}")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
