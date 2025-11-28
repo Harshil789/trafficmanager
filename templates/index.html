@@ -1245,6 +1245,26 @@
             document.getElementById('locationSelect').value = '';
         }
 
+        function exportToCSV() {
+            try {
+                window.location.href = '/api/export-csv';
+                addConsoleLog('CSV export started', 'success');
+            } catch (error) {
+                console.error('Error exporting to CSV:', error);
+                alert('Failed to export CSV');
+            }
+        }
+
+        function exportToPDF() {
+            try {
+                window.location.href = '/api/export-pdf';
+                addConsoleLog('PDF export started', 'success');
+            } catch (error) {
+                console.error('Error exporting to PDF:', error);
+                alert('Failed to export PDF');
+            }
+        }
+
         // Initialize locations on page load
         window.addEventListener('load', () => {
             loadLocations();
