@@ -434,6 +434,128 @@
                 max-width: 100%;
             }
         }
+
+        .location-filter-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-controls select {
+            padding: 12px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            color: #333;
+        }
+
+        .filter-controls button {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .filter-controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .comparison-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .comparison-card h4 {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            font-size: 14px;
+        }
+
+        .comparison-stat:last-child {
+            border-bottom: none;
+        }
+
+        .comparison-stat-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .comparison-stat-value {
+            color: #333;
+            font-weight: 700;
+        }
+
+        .selected-locations-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .location-tag {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .location-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .no-comparison-message {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 </head>
@@ -463,6 +585,36 @@
                 <div class="spinner"></div>
                 <p style="margin-top: 10px; color: #666;">Processing...</p>
             </div>
+        </div>
+
+        <div class="location-filter-section">
+            <h2 style="margin-bottom: 15px; color: #333;">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">location_on</span>
+                Location-Based Analysis
+            </h2>
+            <p style="color: #666; margin-bottom: 20px; font-size: 14px;">Compare traffic patterns across different locations</p>
+            
+            <div class="filter-controls">
+                <select id="locationSelect" onchange="loadLocationData()">
+                    <option value="">-- Select Location --</option>
+                </select>
+                <button onclick="addLocationToComparison()">
+                    <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">add</span>
+                    Add to Compare
+                </button>
+                <button onclick="compareLocations()" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">
+                    <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">analytics</span>
+                    Compare Selected
+                </button>
+                <button onclick="clearLocationComparison()" style="background: #f44336;">
+                    <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">close</span>
+                    Clear
+                </button>
+            </div>
+
+            <div id="selectedLocationsList" class="selected-locations-list"></div>
+            <div id="locationStats" style="margin-top: 20px;"></div>
+            <div id="comparisonResults"></div>
         </div>
 
         <div class="architecture-grid">
@@ -914,6 +1066,181 @@
         }
 
         setInterval(fetchLogs, 2000);
+
+        // Location Filtering Functions
+        let selectedLocations = [];
+
+        async function loadLocations() {
+            try {
+                const response = await fetch('/api/locations');
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const selectEl = document.getElementById('locationSelect');
+                    result.locations.forEach(location => {
+                        const option = document.createElement('option');
+                        option.value = location;
+                        option.textContent = location;
+                        selectEl.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading locations:', error);
+            }
+        }
+
+        async function loadLocationData() {
+            const location = document.getElementById('locationSelect').value;
+            if (!location) {
+                document.getElementById('locationStats').innerHTML = '';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/location-stats/${location}`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const data = result.data;
+                    let statsHtml = `
+                        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                            <h4 style="color: #667eea; margin-bottom: 15px;">📊 ${result.location} Statistics</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <div style="background: white; padding: 12px; border-radius: 6px;">
+                                    <span style="color: #999; font-size: 12px;">Peak Vehicles</span>
+                                    <div style="font-size: 24px; font-weight: 700; color: #2196F3;">${data.peak_vehicles}</div>
+                                </div>
+                                <div style="background: white; padding: 12px; border-radius: 6px;">
+                                    <span style="color: #999; font-size: 12px;">Avg Congestion</span>
+                                    <div style="font-size: 24px; font-weight: 700; color: #FF9800;">${data.avg_congestion}</div>
+                                </div>
+                                <div style="background: white; padding: 12px; border-radius: 6px;">
+                                    <span style="color: #999; font-size: 12px;">Total Readings</span>
+                                    <div style="font-size: 24px; font-weight: 700; color: #4CAF50;">${data.total_readings}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('locationStats').innerHTML = statsHtml;
+                }
+            } catch (error) {
+                console.error('Error loading location data:', error);
+            }
+        }
+
+        function addLocationToComparison() {
+            const location = document.getElementById('locationSelect').value;
+            if (!location) {
+                alert('Please select a location');
+                return;
+            }
+            
+            if (!selectedLocations.includes(location)) {
+                selectedLocations.push(location);
+                updateSelectedLocationsList();
+            }
+        }
+
+        function removeLocationFromComparison(location) {
+            selectedLocations = selectedLocations.filter(l => l !== location);
+            updateSelectedLocationsList();
+        }
+
+        function updateSelectedLocationsList() {
+            const container = document.getElementById('selectedLocationsList');
+            if (selectedLocations.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let html = '<h4 style="color: #666; margin-bottom: 10px;">Selected Locations:</h4>';
+            selectedLocations.forEach(location => {
+                html += `
+                    <span class="location-tag">
+                        <span class="material-icons" style="font-size: 14px;">location_on</span>
+                        ${location}
+                        <button onclick="removeLocationFromComparison('${location}')" title="Remove">×</button>
+                    </span>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        async function compareLocations() {
+            if (selectedLocations.length === 0) {
+                alert('Please select at least one location to compare');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/compare-locations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ locations: selectedLocations })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    displayComparisonResults(result.comparison);
+                }
+            } catch (error) {
+                console.error('Error comparing locations:', error);
+            }
+        }
+
+        function displayComparisonResults(comparison) {
+            let html = '<h3 style="color: #667eea; margin-top: 30px; margin-bottom: 20px;">🔄 Comparison Results</h3>';
+            html += '<div class="comparison-grid">';
+            
+            Object.keys(comparison).forEach(location => {
+                const stats = comparison[location];
+                const congestionColor = stats.congestion_percentage > 50 ? '#f44336' : stats.congestion_percentage > 25 ? '#FF9800' : '#4CAF50';
+                
+                html += `
+                    <div class="comparison-card">
+                        <h4>
+                            <span class="material-icons" style="color: #667eea;">place</span>
+                            ${location}
+                        </h4>
+                        <div class="comparison-stat">
+                            <span class="comparison-stat-label">Avg Vehicles:</span>
+                            <span class="comparison-stat-value">${Math.round(stats.avg_vehicles)}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-stat-label">Peak Vehicles:</span>
+                            <span class="comparison-stat-value">${Math.round(stats.peak_vehicles)}</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-stat-label">Congestion %:</span>
+                            <span class="comparison-stat-value" style="color: ${congestionColor};">${Math.round(stats.congestion_percentage)}%</span>
+                        </div>
+                        <div class="comparison-stat">
+                            <span class="comparison-stat-label">High Alerts:</span>
+                            <span class="comparison-stat-value">${stats.total_high_alerts}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            document.getElementById('comparisonResults').innerHTML = html;
+        }
+
+        function clearLocationComparison() {
+            selectedLocations = [];
+            document.getElementById('locationStats').innerHTML = '';
+            document.getElementById('selectedLocationsList').innerHTML = '';
+            document.getElementById('comparisonResults').innerHTML = '';
+            document.getElementById('locationSelect').value = '';
+        }
+
+        // Initialize locations on page load
+        window.addEventListener('load', () => {
+            loadLocations();
+        });
     </script>
 </body>
 </html>
