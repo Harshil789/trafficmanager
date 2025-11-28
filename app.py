@@ -261,6 +261,106 @@ def clear_logs():
     })
 
 
+@app.route('/api/locations', methods=['GET'])
+def get_locations():
+    """
+    Get all unique locations from traffic logs
+    Used for location-based filtering dropdown
+    """
+    try:
+        locations = db.session.query(TrafficLog.location).distinct().all()
+        location_list = [loc[0] for loc in locations if loc[0]]
+        
+        return jsonify({
+            "status": "success",
+            "locations": sorted(location_list)
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/location-stats/<location>', methods=['GET'])
+def get_location_stats(location):
+    """
+    Get statistics for a specific location
+    Returns vehicle count, congestion levels, and trends
+    """
+    try:
+        logs = TrafficLog.query.filter_by(location=location).order_by(TrafficLog.timestamp.desc()).limit(20).all()
+        logs.reverse()
+        
+        if not logs:
+            return jsonify({
+                "status": "success",
+                "location": location,
+                "data": {
+                    "labels": [],
+                    "vehicle_counts": [],
+                    "congestion_levels": [],
+                    "avg_congestion": "N/A",
+                    "peak_vehicles": 0,
+                    "total_readings": 0
+                }
+            })
+        
+        vehicle_counts = [log.vehicle_count for log in logs]
+        congestion_levels = [log.congestion_level for log in logs]
+        
+        high_count = congestion_levels.count('High')
+        avg_congestion = f"{(high_count / len(congestion_levels) * 100):.1f}%"
+        
+        location_stats = {
+            "labels": [log.timestamp.strftime("%H:%M:%S") for log in logs],
+            "vehicle_counts": vehicle_counts,
+            "congestion_levels": congestion_levels,
+            "avg_congestion": avg_congestion,
+            "peak_vehicles": max(vehicle_counts) if vehicle_counts else 0,
+            "total_readings": len(logs)
+        }
+        
+        return jsonify({
+            "status": "success",
+            "location": location,
+            "data": location_stats
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/compare-locations', methods=['POST'])
+def compare_locations():
+    """
+    Compare statistics across multiple locations
+    """
+    try:
+        selected_locations = request.json.get('locations', [])
+        
+        comparison_data = {}
+        for location in selected_locations:
+            logs = TrafficLog.query.filter_by(location=location).order_by(TrafficLog.timestamp.desc()).limit(15).all()
+            
+            if logs:
+                vehicle_counts = [log.vehicle_count for log in logs]
+                congestion_levels = [log.congestion_level for log in logs]
+                
+                high_count = congestion_levels.count('High')
+                avg_congestion = (high_count / len(congestion_levels) * 100) if congestion_levels else 0
+                
+                comparison_data[location] = {
+                    "avg_vehicles": sum(vehicle_counts) / len(vehicle_counts) if vehicle_counts else 0,
+                    "peak_vehicles": max(vehicle_counts) if vehicle_counts else 0,
+                    "congestion_percentage": avg_congestion,
+                    "total_high_alerts": high_count
+                }
+        
+        return jsonify({
+            "status": "success",
+            "comparison": comparison_data
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/api/chart-data', methods=['GET'])
 def get_chart_data():
     """
